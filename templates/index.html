@@ -1,118 +1,184 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Camera Feed</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
 
-        body {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            height: 100vh;
-            background-color: #f0f0f0;
-        }
+      body {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        height: 100vh;
+        background-color: #f0f0f0;
+      }
 
-        .container {
-            position: relative;
-            width: 100%;
-            max-width: 600px;
-        }
+      .container {
+        position: relative;
+        width: 100%;
+        max-width: 600px;
+      }
 
-        video {
-            width: 100%;
-            height: auto;
-            border: 1px solid #ccc;
-            border-radius: 10px;
-        }
+      video {
+        width: 100%;
+        height: auto;
+        border: 1px solid #ccc;
+        border-radius: 10px;
+      }
 
-        canvas {
-            display: none; /* Hidden until used */
-        }
+      canvas {
+        display: none; /* Hidden until used */
+      }
 
-        .captured-image {
-            width: 100%;
-            max-width: 100px;
-            border: 1px solid #ccc;
-            border-radius: 10px;
-            margin-top: 10px;
-        }
+      .captured-image {
+        width: 100%;
+        max-width: 100px;
+        border: 1px solid #ccc;
+        border-radius: 10px;
+        margin-top: 10px;
+      }
+
+      #startCamera,
+      #captureButton,
+      #removeButton {
+        margin: 0 10px;
+        padding: 10px;
+        font-size: 20px;
+        border-radius: 6px;
+      }
+
+      #startCamera {
+        background-color: black;
+        color: white;
+      }
+
+      #startCamera:hover {
+        background-color: forestgreen;
+      }
+
+      #captureButton {
+        background-color: black;
+        color: white;
+        display: none; /* Initially hidden */
+      }
+
+      #captureButton:hover {
+        background-color: blue;
+      }
+
+      #removeButton {
+        background-color: black;
+        color: white;
+        display: none; /* Initially hidden */
+      }
+
+      #removeButton:hover {
+        background-color: red;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <div class="container">
-        <video id="video" autoplay playsinline></video>
-        <button id="startCamera">Start Camera</button>
-        <button id="captureButton">Capture Image</button>
-        <button id="removeButton">Remove Image</button>
-        <canvas id="canvas"></canvas>
-        <img id="capturedImage" class="captured-image" alt="Captured Image">
+      <video id="video" autoplay playsinline></video>
+      <button id="startCamera">Start Camera</button>
+      <button id="captureButton">Capture Image</button>
+      <button id="removeButton">Remove Image</button>
+      <canvas id="canvas"></canvas>
+      <img id="capturedImage" class="captured-image" alt="Captured Image" />
     </div>
     <script>
-        document.getElementById('startCamera').addEventListener('click', async () => {
-            const video = document.getElementById('video');
+      let cameraStream = null; // Variable to store the camera stream
 
-            const isMobile = /Mobi|Android/i.test(navigator.userAgent);
-            const constraints = {
-                video: isMobile ? { facingMode: { exact: "environment" } } : { facingMode: "user" }
-            };
+      document.getElementById("startCamera").addEventListener("click", async () => {
+        const video = document.getElementById("video");
+        const startCameraButton = document.getElementById("startCamera");
+        const captureButton = document.getElementById("captureButton");
 
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia(constraints);
-                video.srcObject = stream;
-            } catch (err) {
-                console.error("Error accessing the camera: ", err);
-            }
-        });
+        // Toggle camera on/off
+        if (cameraStream === null) {
+          // Start the camera
+          const isMobile = /Mobi|Android/i.test(navigator.userAgent);
+          const constraints = {
+            video: isMobile
+              ? { facingMode: { exact: "environment" } }
+              : { facingMode: "user" },
+          };
 
-        document.getElementById('captureButton').addEventListener('click', () => {
-            const video = document.getElementById('video');
-            const canvas = document.getElementById('canvas');
-            const context = canvas.getContext('2d');
-            const capturedImage = document.getElementById('capturedImage');
-
-            // Set canvas dimensions to match the video
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-
-            // Draw the current frame from the video onto the canvas
-            context.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-            // Convert the canvas to a data URL and display it
-            const imageDataURL = canvas.toDataURL('image/png');
-            capturedImage.src = imageDataURL;
-
-            // Optional: Send the image data to the backend for text recognition
-            sendImageToBackend(imageDataURL);
-        });
-
-        document.getElementById('removeButton').addEventListener('click', () => {
-            const capturedImage = document.getElementById('capturedImage');
-            capturedImage.src = ''; // Clear the image source
-        });
-
-        function sendImageToBackend(imageData) {
-            fetch('/recognize', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ image: imageData })
-            })
-            .then(response => response.json())
-            .then(data => {
-                console.log("Text recognition result:", data);
-            })
-            .catch(error => {
-                console.error("Error sending image to backend:", error);
-            });
+          try {
+            cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
+            video.srcObject = cameraStream;
+            startCameraButton.textContent = "Stop Camera"; // Change button text
+            captureButton.style.display = "inline-block"; // Show capture button
+          } catch (err) {
+            console.error("Error accessing the camera: ", err);
+          }
+        } else {
+          // Stop the camera
+          cameraStream.getTracks().forEach((track) => track.stop());
+          video.srcObject = null;
+          cameraStream = null;
+          startCameraButton.textContent = "Start Camera"; // Revert button text
+          captureButton.style.display = "none"; // Hide capture button
         }
+      });
+
+      document.getElementById("captureButton").addEventListener("click", () => {
+        const video = document.getElementById("video");
+        const canvas = document.getElementById("canvas");
+        const context = canvas.getContext("2d");
+        const capturedImage = document.getElementById("capturedImage");
+        const removeButton = document.getElementById("removeButton");
+
+        // Set canvas dimensions to match the video
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+
+        // Draw the current frame from the video onto the canvas
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        // Convert the canvas to a data URL and display it
+        const imageDataURL = canvas.toDataURL("image/png");
+        capturedImage.src = imageDataURL;
+
+        // Show the remove button after capturing an image
+        removeButton.style.display = "inline-block";
+
+        // Optional: Send the image data to the backend for text recognition
+        sendImageToBackend(imageDataURL);
+      });
+
+      document.getElementById("removeButton").addEventListener("click", () => {
+        const capturedImage = document.getElementById("capturedImage");
+        const removeButton = document.getElementById("removeButton");
+
+        capturedImage.src = ""; // Clear the image source
+
+        // Hide the remove button after image is removed
+        removeButton.style.display = "none";
+      });
+
+      function sendImageToBackend(imageData) {
+        fetch("/recognize", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ image: imageData }),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            console.log("Text recognition result:", data);
+          })
+          .catch((error) => {
+            console.error("Error sending image to backend:", error);
+          });
+      }
     </script>
-</body>
+  </body>
 </html>
